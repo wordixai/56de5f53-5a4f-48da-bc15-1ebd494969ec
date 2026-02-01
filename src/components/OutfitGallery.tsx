@@ -46,10 +46,12 @@ const outfits: Outfit[] = [
   },
 ];
 
-interface OutfitGalleryProps {
+export interface OutfitGalleryProps {
   selectedOutfit: string | null;
-  onSelectOutfit: (id: string) => void;
+  onSelectOutfit: (outfit: Outfit | null) => void;
 }
+
+export { type Outfit };
 
 export function OutfitGallery({ selectedOutfit, onSelectOutfit }: OutfitGalleryProps) {
   return (
@@ -69,7 +71,7 @@ export function OutfitGallery({ selectedOutfit, onSelectOutfit }: OutfitGalleryP
             <div
               key={outfit.id}
               className={`outfit-card group ${selectedOutfit === outfit.id ? 'selected' : ''}`}
-              onClick={() => onSelectOutfit(outfit.id)}
+              onClick={() => onSelectOutfit(selectedOutfit === outfit.id ? null : outfit)}
               style={{ animationDelay: `${index * 0.1}s` }}
             >
               <div className="relative aspect-[3/4] overflow-hidden rounded-xl">

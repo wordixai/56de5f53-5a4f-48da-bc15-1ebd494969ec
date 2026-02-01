@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { Wand2, Download, RefreshCw, Loader2 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { toast } from 'sonner';
+import type { Outfit } from './OutfitGallery';
 
 interface ResultPreviewProps {
   userImage: string | null;
-  selectedOutfit: string | null;
+  selectedOutfit: Outfit | null;
 }
 
 export function ResultPreview({ userImage, selectedOutfit }: ResultPreviewProps) {
@@ -12,22 +15,47 @@ export function ResultPreview({ userImage, selectedOutfit }: ResultPreviewProps)
 
   const canGenerate = userImage && selectedOutfit;
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!canGenerate) return;
 
     setIsGenerating(true);
-    // Simulate AI generation
-    setTimeout(() => {
-      // Use a fashion photo as the "result"
-      setResultImage('https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=600&h=800&fit=crop');
+    setResultImage(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('virtual-try-on', {
+        body: {
+          personImage: userImage,
+          clothingImage: selectedOutfit.image
+        }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      if (data?.resultImage) {
+        setResultImage(data.resultImage);
+        toast.success('换装效果生成成功！');
+      } else {
+        throw new Error('未能生成换装效果，请重试');
+      }
+    } catch (error) {
+      console.error('Virtual try-on error:', error);
+      toast.error(error instanceof Error ? error.message : '换装失败，请重试');
+    } finally {
       setIsGenerating(false);
-    }, 3000);
+    }
   };
 
   const handleDownload = () => {
     if (!resultImage) return;
-    // In a real app, this would download the generated image
-    window.open(resultImage, '_blank');
+
+    const link = document.createElement('a');
+    link.href = resultImage;
+    link.download = `ai-outfit-${Date.now()}.png`;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleReset = () => {
@@ -88,11 +116,11 @@ export function ResultPreview({ userImage, selectedOutfit }: ResultPreviewProps)
                       <Loader2 className="w-12 h-12 text-primary animate-spin" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-semibold mb-2">AI 正在处理中...</h3>
-                      <p className="text-muted-foreground">请稍候，预计需要几秒钟</p>
+                      <h3 className="text-xl font-semibold mb-2">AI 正在生成换装效果...</h3>
+                      <p className="text-muted-foreground">这可能需要 10-30 秒，请耐心等待</p>
                     </div>
                     <div className="w-64 h-2 rounded-full bg-secondary overflow-hidden mx-auto">
-                      <div className="h-full rounded-full animate-shimmer" style={{ background: 'var(--gradient-primary)', width: '60%' }} />
+                      <div className="h-full rounded-full animate-pulse" style={{ background: 'var(--gradient-primary)', width: '100%' }} />
                     </div>
                   </div>
                 ) : (
